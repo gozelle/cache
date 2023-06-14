@@ -1,25 +1,5 @@
-# go-cache
+package main
 
-go-cache is an in-memory key:value store/cache similar to memcached that is
-suitable for applications running on a single machine. Its major advantage is
-that, being essentially a thread-safe `map[string]interface{}` with expiration
-times, it doesn't need to serialize or transmit its contents over the network.
-
-Any object can be stored, for a given duration or forever, and the cache can be
-safely used by multiple goroutines.
-
-Although go-cache isn't meant to be used as a persistent datastore, the entire
-cache can be saved to and loaded from a file (using `c.Items()` to retrieve the
-items map to serialize, and `NewFrom()` to create a cache from a deserialized
-one) to recover from downtime quickly. (See the docs for `NewFrom()` for caveats.)
-
-### Installation
-
-`go get github.com/gozelle/cache`
-
-### Usage
-
-```go
 import (
 	"fmt"
 	"time"
@@ -30,7 +10,7 @@ import (
 func main() {
 	// Create a cache with a default expiration time of 5 minutes, and which
 	// purges expired items every 10 minutes
-	c := cache.New(5*time.Minute, 10*time.Minute)
+	c := cache.New[any](cache.WithDefaultExpiration(5*time.Minute), cache.WithCleanupInterval(10*time.Minute))
 
 	// Set the value of the key "foo" to "bar", with the default expiration time
 	c.Set("foo", "bar", cache.DefaultExpiration)
@@ -51,16 +31,17 @@ func main() {
 	// take arbitrary types, (i.e. interface{}). The simplest way to do this for
 	// values which will only be used once--e.g. for passing to another
 	// function--is:
-	foo, found := c.Get("foo")
+	foo, found = c.Get("foo")
 	if found {
-		MyFunction(foo.(string))
+		fmt.Println(foo.(string))
 	}
 
 	// This gets tedious if the value is used several times in the same function.
 	// You might do either of the following instead:
 	if x, found := c.Get("foo"); found {
 		foo := x.(string)
-		// ...
+		fmt.Println(foo)
+
 	}
 	// or
 	var foo string
@@ -70,15 +51,13 @@ func main() {
 	// ...
 	// foo can then be passed around freely as a string
 
+	MyStruct := struct {
+	}{}
+
 	// Want performance? Store pointers!
 	c.Set("foo", &MyStruct, cache.DefaultExpiration)
 	if x, found := c.Get("foo"); found {
-		foo := x.(*MyStruct)
-			// ...
+		//foo := x.(*MyStruct)
+		fmt.Println(fo)
 	}
 }
-```
-
-### Reference
-
-`godoc` or [http://godoc.org/github.com/gozelle/cache](http://godoc.org/github.com/gozelle/cache)
