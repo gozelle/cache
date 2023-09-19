@@ -117,66 +117,75 @@ func (c *cache[T]) Replace(k string, x T, d time.Duration) error {
 
 // Get an item from the cache. Returns the item or nil, and a bool indicating
 // whether the key was found.
-func (c *cache[T]) Get(k string) (interface{}, bool) {
+func (c *cache[T]) Get(k string) (r T, ok bool) {
 	c.mu.RLock()
 	// "Inlining" of get and Expired
 	item, found := c.items[k]
 	if !found {
 		c.mu.RUnlock()
-		return nil, false
+		return
 	}
 	if item.Expiration > 0 {
 		if time.Now().UnixNano() > item.Expiration {
 			c.mu.RUnlock()
-			return nil, false
+			return
 		}
 	}
 	c.mu.RUnlock()
-	return item.Object, true
+	r = item.Object
+	ok = true
+	return
 }
 
 // GetWithExpiration returns an item and its expiration time from the cache.
 // It returns the item or nil, the expiration time if one is set (if the item
 // never expires a zero value for time.Time is returned), and a bool indicating
 // whether the key was found.
-func (c *cache[T]) GetWithExpiration(k string) (interface{}, time.Time, bool) {
+func (c *cache[T]) GetWithExpiration(k string) (r interface{}, t time.Time, ok bool) {
 	c.mu.RLock()
 	// "Inlining" of get and Expired
 	item, found := c.items[k]
 	if !found {
 		c.mu.RUnlock()
-		return nil, time.Time{}, false
+		return
 	}
-
+	
 	if item.Expiration > 0 {
 		if time.Now().UnixNano() > item.Expiration {
 			c.mu.RUnlock()
-			return nil, time.Time{}, false
+			return
 		}
-
+		
 		// Return the item and the expiration time
 		c.mu.RUnlock()
-		return item.Object, time.Unix(0, item.Expiration), true
+		r = item.Object
+		t = time.Unix(0, item.Expiration)
+		ok = true
+		return
 	}
-
+	
 	// If expiration <= 0 (i.e. no expiration time set) then return the item
 	// and a zeroed time.Time
 	c.mu.RUnlock()
-	return item.Object, time.Time{}, true
+	r = item.Object
+	ok = true
+	return
 }
 
-func (c *cache[T]) get(k string) (interface{}, bool) {
+func (c *cache[T]) get(k string) (r T, ok bool) {
 	item, found := c.items[k]
 	if !found {
-		return nil, false
+		return
 	}
 	// "Inlining" of Expired
 	if item.Expiration > 0 {
 		if time.Now().UnixNano() > item.Expiration {
-			return nil, false
+			return
 		}
 	}
-	return item.Object, true
+	r = item.Object
+	ok = true
+	return
 }
 
 // Increment an item of type int, int8, int16, int32, int64, uintptr, uint,
@@ -191,7 +200,7 @@ func (c *cache[T]) Increment(k string, n int64) error {
 		c.mu.Unlock()
 		return fmt.Errorf("item %s not found", k)
 	}
-
+	
 	switch any(v.Object).(type) {
 	case int:
 		v.Object = any(any(v.Object).(int) + int(n)).(T)
